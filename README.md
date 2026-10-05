@@ -1,73 +1,45 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# MailPilot
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+pnpm monorepo:
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+- `apps/backend` — NestJS API (Gmail + Gemini agent), port 3000
+- `apps/frontend` — React + TypeScript (Vite), port 5173
 
-## Description
+## Setup
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Installation
-
-```bash
-$ npm install
+```sh
+pnpm install
+cp apps/backend/.env.example apps/backend/.env.development   # fill in secrets
+cp apps/frontend/.env.example apps/frontend/.env.development
+pnpm db:migrate                                               # apply DB migrations (dev)
+pnpm dev                                                      # runs both apps
 ```
 
-## Running the app
+## Database
 
-```bash
-# development
-$ npm run start
+Postgres on [Neon](https://neon.tech), accessed with Prisma (`apps/backend/prisma/schema.prisma`).
 
-# watch mode
-$ npm run start:dev
+- `DATABASE_URL` is Neon's pooled URL (used by the app); `DIRECT_URL` is the same URL without `-pooler` (used by migrations).
+- `pnpm db:migrate` creates/applies migrations against the dev database; `pnpm db:deploy:prod` applies committed migrations to prod.
+- Use a separate Neon branch for prod.
 
-# production mode
-$ npm run start:prod
-```
+## Auth
 
-## Test
+Sign-in is Google OAuth. On callback the backend stores the user (Google refresh/access tokens encrypted with `TOKEN_ENCRYPTION_KEY`) and redirects to the frontend with a 7-day session JWT signed with `JWT_SECRET`. `SessionGuard` protects the Gmail, AI and agent routes, refreshes the Google access token when it expires, and scopes pending approvals to their owner.
 
-```bash
-# unit tests
-$ npm run test
+## Environments
 
-# e2e tests
-$ npm run test:e2e
+| | Backend (`apps/backend`) | Frontend (`apps/frontend`) |
+|---|---|---|
+| Local | `.env.development` (used by `pnpm dev`) | `.env.development` (used by `vite`) |
+| Prod | `.env.production` (used by `pnpm start:prod`) | `.env.production` (used by `vite build`) |
 
-# test coverage
-$ npm run test:cov
-```
+How the apps connect:
 
-## Support
+- Frontend `VITE_API_URL` → backend origin.
+- Backend `FRONTEND_URL` → frontend origin (CORS allow-list and the redirect target after Google login).
+- Backend `GOOGLE_REDIRECT_URI` → `<backend origin>/auth/google/callback`, also registered in Google Cloud Console.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+All `.env*` files are gitignored; only each app's `.env.example` is committed. Copy it to `.env.development` / `.env.production` and fill it in. `VITE_*` values are baked in at build time, so the frontend must be rebuilt when they change.
 
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
+The frontend host must serve `index.html` for unknown paths (SPA fallback) so `/auth/callback` resolves in production.

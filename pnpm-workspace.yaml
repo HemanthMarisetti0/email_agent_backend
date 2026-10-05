@@ -1,0 +1,11 @@
+packages:
+  - "apps/*"
+
+allowBuilds:
+  esbuild: true
+  prisma: true
+  "@prisma/engines": true
+  "@google/genai": false
+  "@nestjs/core": false
+  "@scarf/scarf": false
+  protobufjs: false
