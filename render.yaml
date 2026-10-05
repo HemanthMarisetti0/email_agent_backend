@@ -1,0 +1,38 @@
+# Render Blueprint for the MailPilot backend.
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: mailpilot-backend
+    runtime: node
+    plan: free
+    # Built from the repo root so pnpm sees the workspace and lockfile.
+    buildCommand: >-
+      pnpm install --frozen-lockfile &&
+      pnpm build:backend &&
+      pnpm --filter backend db:deploy
+    startCommand: pnpm start:prod
+    healthCheckPath: /api
+    autoDeploy: true
+    envVars:
+      # Do not set NODE_ENV here: it would skip the devDependencies the
+      # build needs (nest CLI, prisma, cross-env). start:prod sets it.
+      - key: NODE_VERSION
+        value: "24"
+      - key: FRONTEND_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false

@@ -286,6 +286,15 @@ pnpm lint                          # ESLint (backend) + tsc type check (frontend
 5. Serve `apps/frontend/dist` as static files. The host must serve `index.html` for unknown paths (SPA fallback) so that `/auth/callback` works.
 6. Make sure the backend's `FRONTEND_URL` exactly matches the frontend's origin, or CORS will block requests.
 
+### Backend on Render
+
+[render.yaml](render.yaml) is a Render Blueprint for the backend. In Render, choose **New → Blueprint**, pick this repo, and fill in the secret environment variables when asked. Render then installs, builds, applies migrations, and starts the API. Health checks use `/api`.
+
+- Don't set `NODE_ENV` on Render. The build needs devDependencies, and `start:prod` sets `NODE_ENV` itself.
+- Render provides `PORT` automatically.
+- Set `GOOGLE_REDIRECT_URI` to `https://<service>.onrender.com/auth/google/callback` and register that URI in Google Cloud Console.
+- Free instances go to sleep when idle, so the first request after a while can take up to about a minute.
+
 ## Troubleshooting
 
 | Problem | Fix |
